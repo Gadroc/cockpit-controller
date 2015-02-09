@@ -3,7 +3,6 @@ package com.gadrocsworkshop.cockpit;
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
-import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
@@ -11,8 +10,6 @@ import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
-
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Created by ccourtne on 2/8/15.
@@ -30,6 +27,16 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
     private int dcsFromFlag;
     private int dcsDeviationFlag;
     private int dcsOffFlag;
+
+    private double headingAngle;
+    private double courseAngle;
+    private double bearing1Angle;
+    private double bearing2Angle;
+    private boolean toFlagVisible;
+    private boolean fromFlagVisible;
+    private boolean deviationFlagVisible;
+    private boolean offFlagVisible;
+    private double deviationOffset;
 
     private Rotate headingRotate;
     private Rotate courseRotate;
@@ -155,53 +162,43 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
     @Override
     public void handleDcsBiosFrameSync() {
         if (isDirty()) {
-
-            // run synchronously on JavaFX thread
-            if (Platform.isFxApplicationThread()) {
-                updateDisplay();
-                return;
-            }
-
-            // queue on JavaFX thread and wait for completion
-            final CountDownLatch doneLatch = new CountDownLatch(1);
-            Platform.runLater(() -> {
-                try {
-                    updateDisplay();
-                } finally {
-                    doneLatch.countDown();
-                }
-            });
-
-            try {
-                doneLatch.await();
-            } catch (InterruptedException e) {
-                // ignore exception
-            }
+            headingAngle = getRotation(dcsHeading);
+            courseAngle = getRotation(dcsCourse);
+            bearing1Angle = getRotation(dcsBearing1);
+            bearing2Angle = getRotation(dcsBearing2);
+            deviationOffset = getTranslation(dcsCourseDeviation, 75.0f);
+            toFlagVisible = getFlagVisible(dcsToFlag);
+            fromFlagVisible = getFlagVisible(dcsFromFlag);
+            deviationFlagVisible = getFlagVisible(dcsDeviationFlag);
+            offFlagVisible = getFlagVisible(dcsOffFlag);
         }
     }
 
     public void updateDisplay() {
-        setRotation(dcsHeading, headingRotate);
-        setRotation(dcsCourse, courseRotate);
-        setRotation(dcsBearing1, bearing1Rotate);
-        setRotation(dcsBearing2, bearing2Rotate);
-        setXTranslation(dcsCourseDeviation, courseTranslate, 75.0f);
-        setFlagVisible(dcsToFlag, toFlag);
-        setFlagVisible(dcsFromFlag, fromFlag);
-        setFlagVisible(dcsDeviationFlag, deviationFlag);
-        setFlagVisible(dcsOffFlag, offFlag);
+        if (dirty) {
+            headingRotate.setAngle(headingAngle);
+            courseRotate.setAngle(courseAngle);
+            bearing1Rotate.setAngle(bearing1Angle);
+            bearing2Rotate.setAngle(bearing2Angle);
+            courseTranslate.setX(deviationOffset);
+            toFlag.setVisible(toFlagVisible);
+            fromFlag.setVisible(fromFlagVisible);
+            deviationFlag.setVisible(deviationFlagVisible);
+            offFlag.setVisible(offFlagVisible);
+            clearDirty();
+        }
         clearDirty();
     }
 
-    private void setFlagVisible(int dcsValue, Node flag) {
-        flag.setVisible(dcsValue != 0);
+    private boolean getFlagVisible(int dcsValue) {
+        return dcsValue != 0;
     }
 
-    private void setRotation(int dcsValue, Rotate rotation) {
-        rotation.setAngle((dcsValue / 65535f)*360.0f);
+    private double getRotation(int dcsValue) {
+        return (dcsValue / 65535f)*360.0f;
     }
 
-    private void setXTranslation(int dcsValue, Translate translation, double maxDeflection) {
-        translation.setX(((dcsValue / 65535f) * maxDeflection*2)-maxDeflection);
+    private double getTranslation(int dcsValue, double maxDeflection) {
+        return ((dcsValue / 65535f) * maxDeflection*2)-maxDeflection;
     }
 }
