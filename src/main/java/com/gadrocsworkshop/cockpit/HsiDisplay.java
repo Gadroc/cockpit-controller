@@ -61,6 +61,9 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
         offFlag = createImageRectangle(this, "/Off Flag.png", 640-32-20, 140, 32, 63);
 
         createImageRectangle(this, "/Lubber Line.png", 320 - (63 / 2), 2.5, 63, 475);
+
+        parser.addDataListener(this);
+        parser.addSyncListener(this);
     }
 
     private Rectangle createImageRectangle(Group group, String imageFile, double x, double y, double width, double height) {
@@ -182,7 +185,7 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
         setRotation(dcsCourse, courseRotate);
         setRotation(dcsBearing1, bearing1Rotate);
         setRotation(dcsBearing2, bearing2Rotate);
-        setXTranslation(dcsCourseDeviation, courseTranslate, 75);
+        setXTranslation(dcsCourseDeviation, courseTranslate, 75.0f);
         setFlagVisible(dcsToFlag, toFlag);
         setFlagVisible(dcsFromFlag, fromFlag);
         setFlagVisible(dcsDeviationFlag, deviationFlag);
@@ -195,10 +198,10 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
     }
 
     private void setRotation(int dcsValue, Rotate rotation) {
-        rotation.setAngle((dcsValue / 65535)*360.0f);
+        rotation.setAngle((dcsValue / 65535f)*360.0f);
     }
 
     private void setXTranslation(int dcsValue, Translate translation, double maxDeflection) {
-        translation.setX((dcsValue / 65535) * maxDeflection);
+        translation.setX(((dcsValue / 65535f) * maxDeflection*2)-maxDeflection);
     }
 }

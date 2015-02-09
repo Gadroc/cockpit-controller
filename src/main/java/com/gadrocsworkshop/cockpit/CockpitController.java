@@ -27,6 +27,8 @@ public class CockpitController extends Application {
         primaryStage.sizeToScene();
         primaryStage.setResizable(false);
         primaryStage.show();
+
+        receiver.start();
     }
 
     @Override
