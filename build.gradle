@@ -1,5 +1,8 @@
 apply plugin: 'java'
+apply plugin: 'application'
+apply from: "${rootProject.projectDir}/gradle/javafx8.gradle"
 
+mainClassName = "com.gadrocsworkshop.cockpit.CockpitController"
 sourceCompatibility = 1.8
 version = '1.0'
 
