@@ -1,4 +1,7 @@
-package com.gadrocsworkshop.cockpit;
+package com.gadrocsworkshop.cockpit.displays;
+
+import com.gadrocsworkshop.cockpit.Display;
+import com.gadrocsworkshop.cockpit.displays.HsiDisplay;
 
 /**
  * Initial display state which turns off the power supply until the control button

@@ -1,5 +1,6 @@
-package com.gadrocsworkshop.cockpit;
+package com.gadrocsworkshop.cockpit.displays;
 
+import com.gadrocsworkshop.cockpit.GaugeDisplay;
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import javafx.scene.Group;
