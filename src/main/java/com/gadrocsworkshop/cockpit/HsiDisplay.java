@@ -1,22 +1,16 @@
 package com.gadrocsworkshop.cockpit;
 
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
-import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import javafx.scene.Group;
 import javafx.scene.Node;
-import javafx.scene.image.Image;
-import javafx.scene.paint.ImagePattern;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
 /**
  * Created by ccourtne on 2/8/15.
  */
-public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyncListener {
-
-    private boolean dirty;
+public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, DcsBiosSyncListener {
 
     private int dcsHeading;
     private int dcsCourse;
@@ -48,7 +42,8 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
     private Node offFlag;
     private Translate courseTranslate;
 
-    public HsiDisplay(DcsBiosParser parser) {
+    @Override
+    public void onInitialize() {
         createImageRectangle(this, "/Outer Face.png", 0, 0, 640, 480);
         headingRotate = createRotatingNeedle(this, "/Compass Card.png", 320, 240, 365, 365);
 
@@ -69,54 +64,8 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
 
         createImageRectangle(this, "/Lubber Line.png", 320 - (63 / 2), 2.5, 63, 475);
 
-        parser.addDataListener(this);
-        parser.addSyncListener(this);
-    }
-
-    private Rectangle createImageRectangle(Group group, String imageFile, double x, double y, double width, double height) {
-        Image image = new Image(imageFile);
-        Rectangle rectangle = new Rectangle(x, y, width, height);
-        rectangle.setFill(new ImagePattern(image));
-        group.getChildren().add(rectangle);
-        return rectangle;
-    }
-
-    private Rectangle createNeedle(Group group, String imageFile, double centerX, double centerY, double width, double height) {
-        return createNeedle(group, imageFile, centerX, centerY, width, height, 0, 0);
-    }
-
-    private Rectangle createNeedle(Group group, String imageFile, double centerX, double centerY, double width, double height, double offsetX, double offsetY) {
-        return createImageRectangle(group, imageFile, centerX-(width/2)+offsetX, centerY-(height/2)+offsetY, width, height);
-    }
-
-    private Rotate createRotatingNeedle(Group group, String imageFile, double centerX, double centerY, double width, double height) {
-        return createRotatingNeedle(group, imageFile, centerX, centerY, width, height, 0, 0);
-    }
-
-    private Rotate createRotatingNeedle(Group group, String imageFile, double centerX, double centerY, double width, double height, double offsetX, double offsetY) {
-        Rectangle needle = createNeedle(group, imageFile, centerX, centerY, width, height, offsetX, offsetY);
-        Rotate rotate = new Rotate(0, centerX, centerY);
-        needle.getTransforms().add(rotate);
-        return rotate;
-    }
-
-    private Translate createTranslatingNeedle(Group group, String imageFile, double centerX, double centerY, double width, double height) {
-        Rectangle needle = createNeedle(group, imageFile, centerX, centerY, width, height);
-        Translate translate = new Translate(0, 0);
-        needle.getTransforms().add(translate);
-        return translate;
-    }
-
-    private boolean isDirty() {
-        return dirty;
-    }
-
-    private void setDirty() {
-        dirty = true;
-    }
-
-    private void clearDirty() {
-        dirty = true;
+        dcsBiosParser.addDataListener(this);
+        dcsBiosParser.addSyncListener(this);
     }
 
     @Override
@@ -174,7 +123,8 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
         }
     }
 
-    public void updateDisplay() {
+    @Override
+    public void onUpdateDisplay() {
         if (dirty) {
             headingRotate.setAngle(headingAngle);
             courseRotate.setAngle(courseAngle);
@@ -188,6 +138,11 @@ public class HsiDisplay extends Group implements DcsBiosDataListener, DcsBiosSyn
             clearDirty();
         }
         clearDirty();
+    }
+
+    @Override
+    public void controlButtonPressed() {
+        controller.removeActiveDisplay();
     }
 
     private boolean getFlagVisible(int dcsValue) {

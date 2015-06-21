@@ -1,17 +1,57 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.hidetake:gradle-ssh-plugin:1.0.5'
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'application'
 apply from: "${rootProject.projectDir}/gradle/javafx8.gradle"
+apply plugin: 'org.hidetake.ssh'
 
 mainClassName = "com.gadrocsworkshop.cockpit.CockpitController"
 sourceCompatibility = 1.8
-version = '1.0'
+version = '1.0.1'
+
+remotes {
+    testCockpit {
+        host = 'testcockpit.local'
+        user = 'pi'
+        identity = file('testcockpit.ppk')
+    }
+}
+
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+        }
+    }
+}
 
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url "https://oss.sonatype.org/content/groups/public"
+    }
 }
 
 dependencies {
     compile group: 'com.gadrocsworkshop', name: 'dcs-bios-receiver', version: '1.0.5'
+    compile group: 'com.pi4j', name: 'pi4j-core', version: '1.0'
     testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+task deployTest(dependsOn: distZip) << {
+    ssh.run {
+        session(remotes.testCockpit) {
+            execute "rm -rf ${project.name}-${version}", ignoreError: true
+            put "build/distributions/${project.name}-${version}.zip", "${project.name}-${version}.zip"
+            execute "unzip ${project.name}-${version}"
+        }
+    }
 }
