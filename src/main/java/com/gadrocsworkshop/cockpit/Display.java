@@ -50,9 +50,9 @@ public abstract class Display extends Group {
      * Called when this display is active and the right rotary encoder
      * has been rotated.
      *
-     * @param count Number of steps the rotary has been moved since last call.
+     * @param direction Direction encoder was rotated
      */
-    public void rightRotaryRotated(int count) {
+    public void rightRotaryRotated(RotaryEncoderDirection direction) {
 
     }
 
@@ -60,9 +60,9 @@ public abstract class Display extends Group {
      * Called when this display is active and the left rotary encoder
      * has been rotated.
      *
-     * @param count Number of steps the rotary has been moved since last call.
+     * @param direction Direction encoder was rotated
      */
-    public void leftRotaryRotated(int count) {
+    public void leftRotaryRotated(RotaryEncoderDirection direction) {
     }
 
     /**

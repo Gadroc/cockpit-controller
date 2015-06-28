@@ -1,6 +1,7 @@
 package com.gadrocsworkshop.cockpit.displays;
 
 import com.gadrocsworkshop.cockpit.GaugeDisplay;
+import com.gadrocsworkshop.cockpit.RotaryEncoderDirection;
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import javafx.scene.Group;
@@ -9,12 +10,15 @@ import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
 /**
+ * Displays a digital HSI replicating an AQU-6 from an A-10C
+ *
  * Created by ccourtne on 2/8/15.
  */
 public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, DcsBiosSyncListener {
 
     private int dcsHeading;
     private int dcsCourse;
+    private int dcsHeadingBug;
     private int dcsBearing1;
     private int dcsBearing2;
     private int dcsCourseDeviation;
@@ -24,6 +28,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     private int dcsOffFlag;
 
     private double headingAngle;
+    private double headingBugAngle;
     private double courseAngle;
     private double bearing1Angle;
     private double bearing2Angle;
@@ -34,6 +39,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     private double deviationOffset;
 
     private Rotate headingRotate;
+    private Rotate headingBugRotate;
     private Rotate courseRotate;
     private Rotate bearing1Rotate;
     private Rotate bearing2Rotate;
@@ -58,6 +64,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
         courseGroup.getTransforms().add(courseRotate);
         getChildren().add(courseGroup);
 
+        headingBugRotate = createRotatingNeedle(this, "/Heading Bug.png", 320, 240, 33, 16, 0, -190);
         bearing2Rotate = createRotatingNeedle(this, "/Bearing Needle 2.png", 320, 240, 33, 424, 0, -1);
         bearing1Rotate = createRotatingNeedle(this, "/Bearing Needle 1.png", 320, 240, 22, 440, 0, 0);
 
@@ -73,6 +80,10 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     public void dcsBiosDataWrite(int address, int newValue) {
         if (address == 0x104c) {
             dcsHeading = newValue;
+            setDirty();
+        }
+        else if (address == 0x1052) {
+            dcsHeadingBug = newValue;
             setDirty();
         }
         else if (address == 0x1054) {
@@ -113,6 +124,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     public void handleDcsBiosFrameSync() {
         if (isDirty()) {
             headingAngle = getRotation(dcsHeading);
+            headingBugAngle = getRotation(dcsHeadingBug);
             courseAngle = getRotation(dcsCourse);
             bearing1Angle = getRotation(dcsBearing1);
             bearing2Angle = getRotation(dcsBearing2);
@@ -128,6 +140,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     public void onUpdateDisplay() {
         if (dirty) {
             headingRotate.setAngle(headingAngle);
+            headingBugRotate.setAngle(headingBugAngle);
             courseRotate.setAngle(courseAngle);
             bearing1Rotate.setAngle(bearing1Angle);
             bearing2Rotate.setAngle(bearing2Angle);
@@ -156,5 +169,25 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
 
     private double getTranslation(int dcsValue, double maxDeflection) {
         return ((dcsValue / 65535f) * maxDeflection*2)-maxDeflection;
+    }
+
+    @Override
+    public void rightRotaryRotated(RotaryEncoderDirection direction) {
+        if (direction == RotaryEncoderDirection.CW) {
+            controller.sendCommand("HSI_CRS_KNOB +3200\n");
+        }
+        else {
+            controller.sendCommand("HSI_CRS_KNOB -3200\n");
+        }
+    }
+
+    @Override
+    public void leftRotaryRotated(RotaryEncoderDirection direction) {
+        if (direction == RotaryEncoderDirection.CW) {
+            controller.sendCommand("HSI_HDG_KNOB +3200\n");
+        }
+        else {
+            controller.sendCommand("HSI_HDG_KNOB -3200\n");
+        }
     }
 }

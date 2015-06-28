@@ -1,5 +1,6 @@
 package com.gadrocsworkshop.cockpit;
 
+import com.gadrocsworkshop.cockpit.adi.DtsAdiListener;
 import com.gadrocsworkshop.cockpit.displays.OffDisplay;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
@@ -18,7 +19,7 @@ import java.util.Stack;
 /**
  * Created by ccourtne on 2/8/15.
  */
-public class CockpitController extends Application {
+public class CockpitController extends Application implements RotaryEncoderListener {
 
     private DcsBiosUdpReceiver receiver;
     private AnimationTimer timer;
@@ -28,6 +29,11 @@ public class CockpitController extends Application {
 
     private GpioController gpio;
     private GpioPinDigitalOutput powerOutput;
+
+    private RotaryEncoder rightEncoder;
+    private RotaryEncoder leftEncoder;
+
+    private DtsAdiListener adiListener;
 
     public CockpitController() {
         displayStack = new Stack<>();
@@ -47,6 +53,19 @@ public class CockpitController extends Application {
         startAnimationTimer();
         System.out.println("Starting GPIO Control");
         startGpio();
+        System.out.println("Starting ADI listener");
+        startAdi();
+    }
+
+    public void sendCommand(String command) {
+        try {
+            receiver.sendInput(command);
+        }
+        catch (IOException ex) {
+            System.out.println("Error sending input");
+            ex.printStackTrace();
+        }
+
     }
 
     public void shutdown() {
@@ -55,12 +74,12 @@ public class CockpitController extends Application {
 
     public void powerOff() {
         System.out.println("Cockpit turned off");
-        powerOutput.high();
+        powerOutput.low();
     }
 
     public void powerOn() {
         System.out.println("Cockpit turned on");
-        powerOutput.low();
+        powerOutput.high();
     }
 
     public void showDisplay(Display display) {
@@ -95,10 +114,35 @@ public class CockpitController extends Application {
         }
     }
 
+    private void startAdi() {
+        adiListener = new DtsAdiListener();
+        receiver.getParser().addDataListener(adiListener);
+        receiver.getParser().addSyncListener(adiListener);
+    }
+
     private void startGpio() {
         gpio = GpioFactory.getInstance();
-        powerOutput = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, PinState.HIGH);
+        powerOutput = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, PinState.LOW);
         startControlButtonListener();
+
+        rightEncoder = setupEncoder(RaspiPin.GPIO_04, RaspiPin.GPIO_05);
+        leftEncoder = setupEncoder(RaspiPin.GPIO_02, RaspiPin.GPIO_03);
+    }
+
+    private RotaryEncoder setupEncoder(Pin pin1, Pin pin2) {
+        RotaryEncoder encoder = new RotaryEncoder(gpio, pin1, pin2);
+        encoder.addListener(this);
+        return encoder;
+    }
+
+    public void EncoderRotated(RotaryEncoder source, RotaryEncoderDirection direction) {
+        Display displayTarget = getDisplayTarget();
+        if (rightEncoder == source) {
+            displayTarget.rightRotaryRotated(direction);
+        }
+        else {
+            displayTarget.leftRotaryRotated(direction);
+        }
     }
 
     private void startControlButtonListener() {
@@ -107,7 +151,7 @@ public class CockpitController extends Application {
         controlButtonPin.addListener(new GpioPinListenerDigital() {
             @Override
             public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-                Display displayTarget = activeDisplay == null ? rootDisplay : activeDisplay;
+                Display displayTarget = getDisplayTarget();
                 if (event.getState() == PinState.LOW) {
                     Platform.runLater(() -> displayTarget.controlButtonPressed());
                 }
@@ -116,6 +160,10 @@ public class CockpitController extends Application {
                 }
             }
         });
+    }
+
+    public Display getDisplayTarget() {
+        return activeDisplay == null ? rootDisplay : activeDisplay;
     }
 
     private void startDcsBiosReceiver() throws IOException {

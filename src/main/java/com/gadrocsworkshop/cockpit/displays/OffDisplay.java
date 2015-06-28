@@ -4,7 +4,7 @@ import com.gadrocsworkshop.cockpit.Display;
 import com.gadrocsworkshop.cockpit.displays.HsiDisplay;
 
 /**
- * Initial display state which turns off the power supply until the control button
+ * Initial display which turns off the power supply until the control button
  * is pushed.
  *
  * Created by Craig Courtney on 3/1/2015.
