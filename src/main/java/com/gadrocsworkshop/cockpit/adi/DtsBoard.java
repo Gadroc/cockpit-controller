@@ -1,76 +1,120 @@
 package com.gadrocsworkshop.cockpit.adi;
 
-import javax.usb.*;
-import java.io.UnsupportedEncodingException;
-import java.util.List;
+import org.hid4java.*;
+import org.hid4java.event.HidServicesEvent;
 
 /**
  * Created by Craig Courtney on 6/21/2015.
  */
-public class DtsBoard {
+public class DtsBoard implements HidServicesListener {
+
     /** The vendor ID of the DTS Board. */
     private static final short VENDOR_ID = (short)0x04d8;
 
     /** The product ID of the DTS Board. */
     private static final short PRODUCT_ID = (short)0xf64e;
 
-    private DtsBoard(UsbDevice device) {
+    private String serialNumber;
+    private HidDevice device;
+
+    private int S1;
+    private int S2;
+    private boolean dirty;
+
+    public static void listBoards() {
         try {
-            UsbInterface usbi = device.getUsbConfiguration((byte)0).getUsbInterface((byte)0);
-            usbi.claim();
-            usbi.getUsbEndpoint((byte)0).getUsbPipe();
-        }
-        catch (UsbException e) {
-            System.out.println("Error setting up DTS board");
-            e.printStackTrace();
-        }
-    }
-
-    public static DtsBoard findDtsBoard(String serialNumber) {
-
-        UsbDevice device = null;
-
-        try {
-            UsbServices services = UsbHostManager.getUsbServices();
-            device = findDtsBoard(services.getRootUsbHub(), serialNumber);
-        }
-        catch (UnsupportedEncodingException|UsbException e) {
-            System.out.println("** Error finding DTS driver board.");
-            e.printStackTrace();
-        }
-
-        if (device == null) {
-            return null;
-        }
-
-        return new DtsBoard(device);
-    }
-
-    private static UsbDevice findDtsBoard(UsbHub hub, String serialNumber) throws UsbException, UnsupportedEncodingException {
-
-        UsbDevice dtsBoard = null;
-
-        @SuppressWarnings("unchecked")
-        List<UsbDevice> devices = hub.getAttachedUsbDevices();
-
-        for (UsbDevice device: devices)
-        {
-            if (device.isUsbHub())
-            {
-                dtsBoard = findDtsBoard((UsbHub) device, serialNumber);
-                if (dtsBoard != null) return dtsBoard;
-            }
-            else
-            {
-                UsbDeviceDescriptor desc = device.getUsbDeviceDescriptor();
-                if (desc.idVendor() == VENDOR_ID &&
-                        desc.idProduct() == PRODUCT_ID &&
-                        device.getSerialNumberString().equalsIgnoreCase(serialNumber)) {
-                    return device;
+            HidServices hidServices = HidManager.getHidServices();
+            for (HidDevice hidDevice : hidServices.getAttachedHidDevices()) {
+                if (hidDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, null)) {
+                    System.out.println("DTS Board Detcted - Serial Number '" + hidDevice.getSerialNumber() + "'");
                 }
             }
         }
+        catch (HidException e) {
+            System.out.println("Error getting HidServices.");
+            e.printStackTrace();
+        }
+    }
 
-        return null;
+    public DtsBoard(String serialNumber) throws HidException {
+
+        HidServices hidServices = HidManager.getHidServices();
+        hidServices.addHidServicesListener(this);
+        this.serialNumber = serialNumber;
+        this.device = hidServices.getHidDevice(VENDOR_ID, PRODUCT_ID, serialNumber);
+        sendValues();
+    }
+
+    public void setAngle(double angle) {
+        double statorAngle = angle+60;
+        int newS1 = (int)(Math.sin(statorAngle * Math.PI / 180 -2 * Math.PI / 3) * 2048 + 2048);
+        int newS2 = (int)(-Math.sin(statorAngle * Math.PI / 180 + 2 * Math.PI / 3) * 2048 + 2048);
+
+        if (newS1 != S1 || newS2 != S2) {
+            S1 = newS1;
+            S2 = newS2;
+
+            System.out.println("Sending Values to DTS("+serialNumber+") Angle:"+angle + " Offset Angel:" + statorAngle +" S1:" + S1 + " S2:" + S2);
+
+            sendValues();
+        }
+    }
+
+    public void shutdown() {
+        try {
+            HidServices hidServices = HidManager.getHidServices();
+            hidServices.removeUsbServicesListener(this);
+            if (this.device != null) {
+                if (this.device.isOpen()) {
+                    this.device.close();
+                }
+                this.device = null;
+
+            }
+        }
+        catch (HidException e) {
+            System.out.println("Error stopping DtsBoard");
+            e.printStackTrace();
+        }
+    }
+
+    private void sendValues() {
+        if (this.device != null) {
+            byte[] outBuffer = {  0, 0, 0, 0 };
+
+            outBuffer[0] = (byte)((S1 >> 8) & 0x0F);
+            outBuffer[1] = (byte)(S1 & 0xFF);
+            outBuffer[2] = (byte)((S2 >> 8) & 0x0F);
+            outBuffer[3] = (byte)(S2 & 0xFF);
+
+            this.device.write(outBuffer, 4, (byte)0);
+        }
+    }
+
+    @Override
+    public void hidDeviceAttached(HidServicesEvent event) {
+        HidDevice newDevice = event.getHidDevice();
+        if (newDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, serialNumber)) {
+            System.out.println("DTSBoard(" + serialNumber + ") Attached.");
+            this.device = newDevice;
+            sendValues();
+        }
+    }
+
+    @Override
+    public void hidDeviceDetached(HidServicesEvent event) {
+        System.out.println("Detach event - " + event.getHidDevice().getSerialNumber());
+        if (event.getHidDevice().isVidPidSerial(VENDOR_ID, PRODUCT_ID, serialNumber)) {
+            System.out.println("DTSBoard(" + serialNumber + ") Detached.");
+            if (device.isOpen()) {
+                device.close();
+            }
+            device = null;
+        }
+    }
+
+    @Override
+    public void hidFailure(HidServicesEvent event) {
+        // Nothing to do?
     }
 }

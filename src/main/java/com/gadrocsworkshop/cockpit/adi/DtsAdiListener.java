@@ -2,10 +2,7 @@ package com.gadrocsworkshop.cockpit.adi;
 
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
-
-import javax.usb.*;
-import java.io.UnsupportedEncodingException;
-import java.util.List;
+import org.hid4java.HidException;
 
 /**
  * Created by Craig Courtney on 6/21/2015.
@@ -13,25 +10,57 @@ import java.util.List;
 public class DtsAdiListener implements DcsBiosDataListener, DcsBiosSyncListener {
 
     /** Serial number for the Roll DTS Board */
-    private static final String ROLL_SERIAL_NUMBER = "A035";
+    private static final String ROLL_SERIAL_NUMBER = "A0034";
 
     /** Serial number for the Pitch DTS Board */
-    private static final String PITCH_SERIAL_NUMBER = "A034";
+    private static final String PITCH_SERIAL_NUMBER = "A0035";
 
     private DtsBoard rollBoard;
     private DtsBoard pitchBoard;
 
+    private int rollValue = 0;
+    private int pitchValue = 0;
+
     public DtsAdiListener() {
-        rollBoard = DtsBoard.findDtsBoard(ROLL_SERIAL_NUMBER);
-        pitchBoard = DtsBoard.findDtsBoard(PITCH_SERIAL_NUMBER);
+        try {
+            rollBoard = new DtsBoard(ROLL_SERIAL_NUMBER);
+            pitchBoard = new DtsBoard(PITCH_SERIAL_NUMBER);
+        }
+        catch (HidException e) {
+            System.out.println("Error initializing DTSBoard objects.");
+            e.printStackTrace();
+        }
+    }
+
+    public void shutdown() {
+        rollBoard.shutdown();
+        pitchBoard.shutdown();
     }
 
     @Override
     public void dcsBiosDataWrite(int address, int newValue) {
+        if (address == 0x1032) {
+            if (pitchValue != newValue) {
+                pitchValue = newValue;
+                System.out.println("New Pitch Value: " + pitchValue);
+            }
+        }
+        else if (address == 0x1034) {
+            if (rollValue != newValue) {
+                rollValue = newValue;
+                System.out.println("New Roll Value: " + rollValue);
+            }
+        }
     }
 
     @Override
     public void handleDcsBiosFrameSync() {
-        //
+        setBoardAngle(pitchBoard, pitchValue, -180.0);
+        setBoardAngle(rollBoard, rollValue, 360.0);
     }
+
+    private void setBoardAngle(DtsBoard board, int value, double factor) {
+        board.setAngle(((value/65535.0) * factor) - (factor / 2.0));
+    }
+
 }

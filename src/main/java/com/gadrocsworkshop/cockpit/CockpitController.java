@@ -59,10 +59,10 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     public void sendCommand(String command) {
         try {
-            receiver.sendInput(command);
+            receiver.sendCommand(command);
         }
         catch (IOException ex) {
-            System.out.println("Error sending input");
+            System.out.println("Error sending command to DCS");
             ex.printStackTrace();
         }
 
@@ -199,6 +199,8 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     @Override
     public void stop() throws Exception {
+        System.out.println("Stopping controller");
+        adiListener.shutdown();
         receiver.stop();
         timer.stop();
     }
