@@ -4,9 +4,11 @@ import org.hid4java.*;
 import org.hid4java.event.HidServicesEvent;
 
 /**
+ * Object to control brydling's DTS Converter (http://forums.eagle.ru/showthread.php?t=112902).
+ *
  * Created by Craig Courtney on 6/21/2015.
  */
-public class DtsBoard implements HidServicesListener {
+class DtsBoard implements HidServicesListener {
 
     /** The vendor ID of the DTS Board. */
     private static final short VENDOR_ID = (short)0x04d8;
@@ -19,16 +21,18 @@ public class DtsBoard implements HidServicesListener {
 
     private int S1;
     private int S2;
-    private boolean dirty;
 
-    public static void listBoards() {
+    /**
+     * Sends a list of connected DTS boards along with their serial numbers to the log file.
+     */
+    public static void logAvailableDtsBoards() {
         try {
             HidServices hidServices = HidManager.getHidServices();
-            for (HidDevice hidDevice : hidServices.getAttachedHidDevices()) {
-                if (hidDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, null)) {
-                    System.out.println("DTS Board Detcted - Serial Number '" + hidDevice.getSerialNumber() + "'");
-                }
-            }
+            hidServices.getAttachedHidDevices().stream()
+                    .filter(hidDevice -> hidDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, null))
+                    .forEach(
+                            hidDevice -> System.out.println("DTS Board Detected - Serial Number '" + hidDevice.getSerialNumber() + "'")
+                    );
         }
         catch (HidException e) {
             System.out.println("Error getting HidServices.");
@@ -60,6 +64,10 @@ public class DtsBoard implements HidServicesListener {
         }
     }
 
+    /**
+     * Must be called once you are done controlling the DTS Board.  If this is not called
+     * some dangling listeners and references will not be properly cleaned up.
+     */
     public void shutdown() {
         try {
             HidServices hidServices = HidManager.getHidServices();

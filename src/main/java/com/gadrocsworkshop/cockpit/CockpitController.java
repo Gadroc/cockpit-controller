@@ -2,6 +2,7 @@ package com.gadrocsworkshop.cockpit;
 
 import com.gadrocsworkshop.cockpit.adi.DtsAdiListener;
 import com.gadrocsworkshop.cockpit.displays.OffDisplay;
+import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
@@ -17,7 +18,9 @@ import java.io.IOException;
 import java.util.Stack;
 
 /**
- * Created by ccourtne on 2/8/15.
+ * Primary object running the cockpit.
+ *
+ * Created by Craig Courtney on 2/8/15.
  */
 public class CockpitController extends Application implements RotaryEncoderListener {
 
@@ -25,16 +28,18 @@ public class CockpitController extends Application implements RotaryEncoderListe
     private AnimationTimer timer;
     private Display activeDisplay;
     private Display rootDisplay;
-    private Stack<Display> displayStack;
+    private final Stack<Display> displayStack;
 
     private GpioController gpio;
     private GpioPinDigitalOutput powerOutput;
 
     private RotaryEncoder rightEncoder;
+    @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private RotaryEncoder leftEncoder;
 
     private DtsAdiListener adiListener;
 
+    @SuppressWarnings("unused")
     public CockpitController() {
         displayStack = new Stack<>();
     }
@@ -92,6 +97,7 @@ public class CockpitController extends Application implements RotaryEncoderListe
         display.onDisplay();
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void removeAllDisplays() {
         if (activeDisplay != null) {
             rootDisplay.getChildren().remove(activeDisplay);
@@ -153,17 +159,22 @@ public class CockpitController extends Application implements RotaryEncoderListe
             public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
                 Display displayTarget = getDisplayTarget();
                 if (event.getState() == PinState.LOW) {
-                    Platform.runLater(() -> displayTarget.controlButtonPressed());
+                    Platform.runLater(displayTarget::controlButtonPressed);
                 }
                 else {
-                    Platform.runLater(() -> displayTarget.controlButtonReleased());
+                    Platform.runLater(displayTarget::controlButtonReleased);
                 }
             }
         });
     }
 
+    @SuppressWarnings("WeakerAccess")
     public Display getDisplayTarget() {
         return activeDisplay == null ? rootDisplay : activeDisplay;
+    }
+
+    public DcsBiosParser getDcsBiosParser() {
+        return receiver.getParser();
     }
 
     private void startDcsBiosReceiver() throws IOException {
@@ -181,7 +192,6 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     public void initDisplay(Display display) {
         display.setController(this);
-        display.setDcsBiosParser(receiver.getParser());
         display.onInitialize();
     }
 

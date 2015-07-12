@@ -3,6 +3,7 @@ package com.gadrocsworkshop.cockpit.displays;
 import com.gadrocsworkshop.cockpit.GaugeDisplay;
 import com.gadrocsworkshop.cockpit.RotaryEncoderDirection;
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
+import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import javafx.scene.Group;
 import javafx.scene.Node;
@@ -12,7 +13,7 @@ import javafx.scene.transform.Translate;
 /**
  * Displays a digital HSI replicating an AQU-6 from an A-10C
  *
- * Created by ccourtne on 2/8/15.
+ * Created by Craig Courtney on 2/8/15.
  */
 public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, DcsBiosSyncListener {
 
@@ -59,7 +60,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
         createNeedle(courseGroup, "/Course Card.png", 320, 240, 262, 324, 0, -11.5);
         toFlag = createImageRectangle(courseGroup, "/To Flag.png", 309.5, 185, 21, 18);
         fromFlag = createImageRectangle(courseGroup, "/From Flag.png", 309.5, 290, 21, 18);
-        deviationFlag = createImageRectangle(courseGroup, "/Deviation Flag.png", 320-(39/2), 155, 39, 24);
+        deviationFlag = createImageRectangle(courseGroup, "/Deviation Flag.png", 320 - (39 / 2), 155, 39, 24);
         courseTranslate = createTranslatingNeedle(courseGroup, "/Deviation Needle.png", 320, 240, 8, 209);
         courseGroup.getTransforms().add(courseRotate);
         getChildren().add(courseGroup);
@@ -68,12 +69,13 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
         bearing2Rotate = createRotatingNeedle(this, "/Bearing Needle 2.png", 320, 240, 33, 424, 0, -1);
         bearing1Rotate = createRotatingNeedle(this, "/Bearing Needle 1.png", 320, 240, 22, 440, 0, 0);
 
-        offFlag = createImageRectangle(this, "/Off Flag.png", 640-32-20, 140, 32, 63);
+        offFlag = createImageRectangle(this, "/Off Flag.png", 640 - 32 - 20, 140, 32, 63);
 
         createImageRectangle(this, "/Lubber Line.png", 320 - (63 / 2), 2.5, 63, 475);
 
-        dcsBiosParser.addDataListener(this);
-        dcsBiosParser.addSyncListener(this);
+        DcsBiosParser parser = getDcsBiosParser();
+        parser.addDataListener(this);
+        parser.addSyncListener(this);
     }
 
     @Override
@@ -138,7 +140,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
 
     @Override
     public void onUpdateDisplay() {
-        if (dirty) {
+        if (isDirty()) {
             headingRotate.setAngle(headingAngle);
             headingBugRotate.setAngle(headingBugAngle);
             courseRotate.setAngle(courseAngle);
@@ -167,7 +169,7 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
         return (dcsValue / 65535f)*360.0f;
     }
 
-    private double getTranslation(int dcsValue, double maxDeflection) {
+    private double getTranslation(int dcsValue, @SuppressWarnings("SameParameterValue") double maxDeflection) {
         return ((dcsValue / 65535f) * maxDeflection*2)-maxDeflection;
     }
 

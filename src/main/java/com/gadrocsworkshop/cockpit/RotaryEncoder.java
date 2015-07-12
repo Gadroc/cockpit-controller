@@ -8,19 +8,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Object which listens for GPIO pin changes and decodes the output from a standard rotary encoder.
+ *
  * Created by Craig Courtney on 6/28/2015.
  */
-public class RotaryEncoder implements GpioPinListenerDigital {
+class RotaryEncoder implements GpioPinListenerDigital {
 
-    private List<RotaryEncoderListener> listeners = new ArrayList<RotaryEncoderListener>();
+    private final List<RotaryEncoderListener> listeners = new ArrayList<>();
 
-    private GpioPinDigitalInput rotaryPin1;
-    private GpioPinDigitalInput rotaryPin2;
+    private final GpioPinDigitalInput rotaryPin1;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final GpioPinDigitalInput rotaryPin2;
 
     private boolean pinState1;
     private boolean pinState2;
 
-    private int count = 0;
     public RotaryEncoder(GpioController gpio, Pin pin1, Pin pin2) {
         rotaryPin1 = gpio.provisionDigitalInputPin(pin1, PinPullResistance.PULL_UP);
         pinState1 = rotaryPin1.isHigh();
@@ -48,6 +50,7 @@ public class RotaryEncoder implements GpioPinListenerDigital {
             }
 
             if (check) {
+                //noinspection ConstantConditions
                 if (pinState1 == pinState2) {
                     notify(RotaryEncoderDirection.CCW);
                 } else {

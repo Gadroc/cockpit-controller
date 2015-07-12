@@ -5,6 +5,8 @@ import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import org.hid4java.HidException;
 
 /**
+ * DCSBios Listener to control brydling's DTS Converter (http://forums.eagle.ru/showthread.php?t=112902).
+ *
  * Created by Craig Courtney on 6/21/2015.
  */
 public class DtsAdiListener implements DcsBiosDataListener, DcsBiosSyncListener {

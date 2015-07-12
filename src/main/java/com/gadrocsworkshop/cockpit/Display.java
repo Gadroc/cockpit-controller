@@ -4,30 +4,43 @@ import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import javafx.scene.Group;
 
 /**
+ * Base class for displaying information on the cockpit display.
+ *
  * Created by Craig Courtney on 3/1/2015.
  */
 public abstract class Display extends Group {
 
     protected CockpitController controller;
-    protected DcsBiosParser dcsBiosParser;
 
-    public CockpitController getController() {
+    /**
+     * Returns the cockpit controller for this display.
+     *
+     * @return CockpitController object for this display.
+     */
+    @SuppressWarnings("WeakerAccess")
+    protected CockpitController getController() {
         return controller;
     }
 
+    /**
+     * Sets the controller for this display.
+     *
+     * @param controller CockpitController this display should use to interact with the cockpit.
+     */
     public void setController(CockpitController controller) {
         this.controller = controller;
     }
 
-    public DcsBiosParser getDcsBiosParser() {
-        return dcsBiosParser;
+    /**
+     * Returns the parser this display is connected to.
+     *
+     * @return DcsBiosParser object which this display should listen to.
+     */
+    protected DcsBiosParser getDcsBiosParser() {
+        return getController().getDcsBiosParser();
     }
 
-    public void setDcsBiosParser(DcsBiosParser dcsBiosParser) {
-        this.dcsBiosParser = dcsBiosParser;
-    }
-
-    public void showDisplay(Display display) {
+    protected void showDisplay(Display display) {
         controller.showDisplay(display);
     }
 
@@ -42,6 +55,7 @@ public abstract class Display extends Group {
      * Called when this display is active and the control button has
      * been released.
      */
+    @SuppressWarnings("EmptyMethod")
     public void controlButtonReleased() {
 
     }
@@ -87,6 +101,7 @@ public abstract class Display extends Group {
     /**
      * Called when this display is removed from the screen.
      */
+    @SuppressWarnings("EmptyMethod")
     public void onHide() {
     }
 }
