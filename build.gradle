@@ -20,6 +20,13 @@ remotes {
     testCockpit {
         host = 'testcockpit.local'
         user = 'pi'
+        knownHosts = allowAnyHosts
+        identity = file('testcockpit.ppk')
+    }
+    cockpit {
+        host = 'cockpit.local'
+        user = 'pi'
+        knownHosts = allowAnyHosts
         identity = file('testcockpit.ppk')
     }
 }
@@ -38,18 +45,31 @@ repositories {
     maven {
         url "https://oss.sonatype.org/content/groups/public"
     }
+    maven {
+        url "https://raw.github.com/bitcoin-solutions/mbhd-maven/master/releases"
+    }
 }
 
 dependencies {
-    compile group: 'com.gadrocsworkshop', name: 'dcs-bios-receiver', version: '1.1.5'
+    compile group: 'com.gadrocsworkshop', name: 'dcs-bios-receiver', version: '1.2.3'
     compile group: 'com.pi4j', name: 'pi4j-core', version: '1.0'
-    compile group: 'org.usb4java', name: 'usb4java-javax', version: '1.2.0'
+    compile group: 'org.hid4java', name: 'hid4java', version: '0.3.1'
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
 
 task deployTest(dependsOn: distZip) << {
     ssh.run {
         session(remotes.testCockpit) {
+            execute "rm -rf ${project.name}-${version}", ignoreError: true
+            put "build/distributions/${project.name}-${version}.zip", "${project.name}-${version}.zip"
+            execute "unzip ${project.name}-${version}"
+        }
+    }
+}
+
+task deploy(dependsOn: distZip) << {
+    ssh.run {
+        session(remotes.cockpit) {
             execute "rm -rf ${project.name}-${version}", ignoreError: true
             put "build/distributions/${project.name}-${version}.zip", "${project.name}-${version}.zip"
             execute "unzip ${project.name}-${version}"
