@@ -73,6 +73,7 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     }
 
+    @SuppressWarnings("unused")
     public void shutdown() {
         removeAllDisplays();
     }

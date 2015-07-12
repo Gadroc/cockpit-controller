@@ -25,6 +25,7 @@ class DtsBoard implements HidServicesListener {
     /**
      * Sends a list of connected DTS boards along with their serial numbers to the log file.
      */
+    @SuppressWarnings("unused")
     public static void logAvailableDtsBoards() {
         try {
             HidServices hidServices = HidManager.getHidServices();
