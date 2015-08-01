@@ -1,7 +1,7 @@
 package com.gadrocsworkshop.cockpit;
 
 import com.gadrocsworkshop.cockpit.adi.DtsAdiListener;
-import com.gadrocsworkshop.cockpit.displays.OffDisplay;
+import com.gadrocsworkshop.cockpit.displays.HsiDisplay;
 import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
@@ -9,37 +9,60 @@ import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import com.gadrocsworkshop.dcsbios.DcsBiosUdpReceiver;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Stack;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 /**
  * Primary object running the cockpit.
  *
  * Created by Craig Courtney on 2/8/15.
  */
-public class CockpitController extends Application implements RotaryEncoderListener {
+public class CockpitController extends Application implements RotaryEncoderListener, ControlResponder {
+
+    private static final Logger LOGGER;
 
     private DcsBiosUdpReceiver receiver;
     private AnimationTimer timer;
     private Display activeDisplay;
-    private Display rootDisplay;
+    private Group displayRoot;
+    private HsiDisplay hsiDisplay;
     private final Stack<Display> displayStack;
 
     private GpioController gpio;
     private GpioPinDigitalOutput powerOutput;
 
     private RotaryEncoder rightEncoder;
-    @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private RotaryEncoder leftEncoder;
 
     private DtsAdiListener adiListener;
 
-    @SuppressWarnings("unused")
+    static {
+        try {
+            final File loggingConfigFile = new File("/etc/cockpit/logging.properties");
+            if (loggingConfigFile.exists()) {
+                final InputStream loggingConfigStream = new FileInputStream(loggingConfigFile);
+                LogManager.getLogManager().readConfiguration(loggingConfigStream);
+                loggingConfigStream.close();
+            }
+        } catch (Exception e) {
+            System.out.println("Error reading logging configuration file.");
+        }
+        LOGGER = Logger.getLogger(CockpitController.class.getName());
+    }
+
     public CockpitController() {
         displayStack = new Stack<>();
     }
@@ -50,88 +73,86 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        System.out.println("Starting DCS Bios Receiver");
+        LOGGER.info("Initializing Cockpit");
         startDcsBiosReceiver();
-        System.out.println("Initializing Display");
         setupDisplay(primaryStage);
-        System.out.println("Starting Display Animation Timer");
         startAnimationTimer();
-        System.out.println("Starting GPIO Control");
         startGpio();
-        System.out.println("Starting ADI listener");
         startAdi();
+        LOGGER.info("Initialization Complete");
     }
 
     public void sendCommand(String command) {
         try {
             receiver.sendCommand(command);
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, "Error sending command to DCS", ex);
         }
-        catch (IOException ex) {
-            System.out.println("Error sending command to DCS");
-            ex.printStackTrace();
-        }
-
     }
 
-    @SuppressWarnings("unused")
     public void shutdown() {
+        LOGGER.fine("Shutting down cockpit.");
         removeAllDisplays();
     }
 
     public void powerOff() {
-        System.out.println("Cockpit turned off");
+        LOGGER.fine("Cockpit turned off");
         powerOutput.low();
     }
 
     public void powerOn() {
-        System.out.println("Cockpit turned on");
+        LOGGER.fine("Cockpit turned on");
         powerOutput.high();
     }
 
     public void showDisplay(Display display) {
-        if (activeDisplay != null) {
-            displayStack.push(activeDisplay);
-            activeDisplay.onHide();
+        try {
+            if (activeDisplay != null) {
+                displayStack.push(activeDisplay);
+                activeDisplay.onHide();
+            }
+            activeDisplay = display;
+            if (!displayRoot.getChildren().contains(display.getParentNode())) {
+                displayRoot.getChildren().add(display.getParentNode());
+            }
+            display.onDisplay();
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error activating display.", ex);
         }
-        rootDisplay.getChildren().add(display);
-        activeDisplay = display;
-        display.onDisplay();
     }
 
-    @SuppressWarnings("WeakerAccess")
     public void removeAllDisplays() {
-        if (activeDisplay != null) {
-            rootDisplay.getChildren().remove(activeDisplay);
-            activeDisplay = null;
+        while (activeDisplay != null) {
+            removeActiveDisplay();
         }
-        displayStack.removeAllElements();
-        rootDisplay.onDisplay();
     }
 
     public void removeActiveDisplay() {
         if (activeDisplay != null) {
-            rootDisplay.getChildren().remove(activeDisplay);
-            activeDisplay = null;
+            activeDisplay.getParentNode().toBack();
+            displayRoot.getChildren().remove(activeDisplay.getParentNode());
             if (displayStack.isEmpty()) {
-                rootDisplay.onDisplay();
-            }
-            else {
-                showDisplay(displayStack.pop());
+                activeDisplay = null;
+                powerOff();
+            } else {
+                activeDisplay = displayStack.pop();
+                activeDisplay.onDisplay();
             }
         }
     }
 
     private void startAdi() {
+        LOGGER.fine("Starting ADI listener");
         adiListener = new DtsAdiListener();
         receiver.getParser().addDataListener(adiListener);
         receiver.getParser().addSyncListener(adiListener);
     }
 
     private void startGpio() {
+        LOGGER.fine("Starting GPIO Control");
         gpio = GpioFactory.getInstance();
         powerOutput = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, PinState.LOW);
         startControlButtonListener();
-
         rightEncoder = setupEncoder(RaspiPin.GPIO_04, RaspiPin.GPIO_05);
         leftEncoder = setupEncoder(RaspiPin.GPIO_02, RaspiPin.GPIO_03);
     }
@@ -143,12 +164,11 @@ public class CockpitController extends Application implements RotaryEncoderListe
     }
 
     public void EncoderRotated(RotaryEncoder source, RotaryEncoderDirection direction) {
-        Display displayTarget = getDisplayTarget();
+        ControlResponder responder = getActiveResponder();
         if (rightEncoder == source) {
-            displayTarget.rightRotaryRotated(direction);
-        }
-        else {
-            displayTarget.leftRotaryRotated(direction);
+            Platform.runLater(() -> responder.rightRotaryRotated(direction));
+        } else {
+            Platform.runLater(() -> responder.leftRotaryRotated(direction));
         }
     }
 
@@ -158,20 +178,18 @@ public class CockpitController extends Application implements RotaryEncoderListe
         controlButtonPin.addListener(new GpioPinListenerDigital() {
             @Override
             public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
-                Display displayTarget = getDisplayTarget();
+                ControlResponder responder = getActiveResponder();
                 if (event.getState() == PinState.LOW) {
-                    Platform.runLater(displayTarget::controlButtonPressed);
-                }
-                else {
-                    Platform.runLater(displayTarget::controlButtonReleased);
+                    Platform.runLater(responder::controlButtonPressed);
+                } else {
+                    Platform.runLater(responder::controlButtonReleased);
                 }
             }
         });
     }
 
-    @SuppressWarnings("WeakerAccess")
-    public Display getDisplayTarget() {
-        return activeDisplay == null ? rootDisplay : activeDisplay;
+    protected ControlResponder getActiveResponder() {
+        return activeDisplay == null ? this : activeDisplay;
     }
 
     public DcsBiosParser getDcsBiosParser() {
@@ -179,24 +197,62 @@ public class CockpitController extends Application implements RotaryEncoderListe
     }
 
     private void startDcsBiosReceiver() throws IOException {
+        LOGGER.fine("Starting DCS Bios Receiver");
         receiver = new DcsBiosUdpReceiver();
         receiver.start();
     }
 
     private void setupDisplay(Stage primaryStage) {
-        rootDisplay = new OffDisplay();
-        initDisplay(rootDisplay);
-        primaryStage.setScene(new Scene(rootDisplay, 640, 480, Color.BLACK));
+        LOGGER.fine("Initializing Display");
+
+        displayRoot = new Group();
+        Scene scene = new Scene(displayRoot, 640, 480, Color.BLACK);
+
+        scene.setOnKeyPressed(event -> {
+            ControlResponder responder = getActiveResponder();
+            KeyCode keyCode = event.getCode();
+            if (keyCode == KeyCode.SPACE) {
+                Platform.runLater(responder::controlButtonPressed);
+            } else if (keyCode == KeyCode.UP) {
+                Platform.runLater(() -> responder.leftRotaryRotated(RotaryEncoderDirection.CCW));
+            } else if (keyCode == KeyCode.DOWN) {
+                Platform.runLater(() -> responder.leftRotaryRotated(RotaryEncoderDirection.CW));
+            } else if (keyCode == KeyCode.LEFT) {
+                Platform.runLater(() -> responder.rightRotaryRotated(RotaryEncoderDirection.CCW));
+            } else if (keyCode == KeyCode.RIGHT) {
+                Platform.runLater(() -> responder.rightRotaryRotated(RotaryEncoderDirection.CW));
+            }
+        });
+
+        scene.setOnKeyReleased(event -> {
+            ControlResponder responder = getActiveResponder();
+            KeyCode keyCode = event.getCode();
+            if (keyCode == KeyCode.SPACE) {
+                Platform.runLater(responder::controlButtonReleased);
+            } else if (keyCode == KeyCode.ESCAPE) {
+                Platform.exit();
+            }
+        });
+
+        primaryStage.setScene(scene);
         primaryStage.setResizable(false);
         primaryStage.show();
+
+        hsiDisplay = new HsiDisplay();
+        initDisplay(hsiDisplay);
     }
 
     public void initDisplay(Display display) {
-        display.setController(this);
-        display.onInitialize();
+        try {
+            display.setController(this);
+            display.onInitialize();
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, String.format("Error initializing display - %s", display.getClass().getName()), ex);
+        }
     }
 
     private void startAnimationTimer() {
+        LOGGER.fine("Starting Display Animation Timer");
         timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
@@ -210,9 +266,31 @@ public class CockpitController extends Application implements RotaryEncoderListe
 
     @Override
     public void stop() throws Exception {
-        System.out.println("Stopping controller");
+        LOGGER.fine("Stopping controller");
         adiListener.shutdown();
         receiver.stop();
         timer.stop();
+    }
+
+    @Override
+    public void controlButtonPressed() {
+        LOGGER.finer("Control button pressed in off state.");
+    }
+
+    @Override
+    public void controlButtonReleased() {
+        LOGGER.fine("Control button released in off state.");
+        powerOn();
+        showDisplay(hsiDisplay);
+    }
+
+    @Override
+    public void rightRotaryRotated(RotaryEncoderDirection direction) {
+        LOGGER.fine("Right rotary rotated in off state.");
+    }
+
+    @Override
+    public void leftRotaryRotated(RotaryEncoderDirection direction) {
+        LOGGER.fine("Left rotary rotated in off state.");
     }
 }

@@ -1,16 +1,23 @@
 package com.gadrocsworkshop.cockpit;
 
 import com.gadrocsworkshop.dcsbios.DcsBiosParser;
-import javafx.scene.Group;
+import javafx.scene.Parent;
 
 /**
  * Base class for displaying information on the cockpit display.
  *
  * Created by Craig Courtney on 3/1/2015.
  */
-public abstract class Display extends Group {
+public abstract class Display implements ControlResponder {
 
     protected CockpitController controller;
+
+    /**
+     * Gets the node to display for this display.
+     *
+     * @return Node object which represents this display.
+     */
+    public abstract Parent getParentNode();
 
     /**
      * Returns the cockpit controller for this display.
@@ -45,41 +52,6 @@ public abstract class Display extends Group {
     }
 
     /**
-     * Called when this display is active and the control button has
-     * been pushed.
-     */
-    public void controlButtonPressed() {
-    }
-
-    /**
-     * Called when this display is active and the control button has
-     * been released.
-     */
-    @SuppressWarnings("EmptyMethod")
-    public void controlButtonReleased() {
-
-    }
-
-    /**
-     * Called when this display is active and the right rotary encoder
-     * has been rotated.
-     *
-     * @param direction Direction encoder was rotated
-     */
-    public void rightRotaryRotated(RotaryEncoderDirection direction) {
-
-    }
-
-    /**
-     * Called when this display is active and the left rotary encoder
-     * has been rotated.
-     *
-     * @param direction Direction encoder was rotated
-     */
-    public void leftRotaryRotated(RotaryEncoderDirection direction) {
-    }
-
-    /**
      * Called during initialization of the display before it's actually displayed.
      */
     public void onInitialize() {
@@ -103,5 +75,25 @@ public abstract class Display extends Group {
      */
     @SuppressWarnings("EmptyMethod")
     public void onHide() {
+    }
+
+    @Override
+    public void controlButtonPressed() {
+
+    }
+
+    @Override
+    public void controlButtonReleased() {
+
+    }
+
+    @Override
+    public void rightRotaryRotated(RotaryEncoderDirection direction) {
+
+    }
+
+    @Override
+    public void leftRotaryRotated(RotaryEncoderDirection direction) {
+
     }
 }

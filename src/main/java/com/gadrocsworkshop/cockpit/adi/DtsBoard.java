@@ -3,12 +3,17 @@ package com.gadrocsworkshop.cockpit.adi;
 import org.hid4java.*;
 import org.hid4java.event.HidServicesEvent;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Object to control brydling's DTS Converter (http://forums.eagle.ru/showthread.php?t=112902).
  *
  * Created by Craig Courtney on 6/21/2015.
  */
 class DtsBoard implements HidServicesListener {
+
+    private static final Logger LOGGER = Logger.getLogger(DtsBoard.class.getName());
 
     /** The vendor ID of the DTS Board. */
     private static final short VENDOR_ID = (short)0x04d8;
@@ -32,12 +37,11 @@ class DtsBoard implements HidServicesListener {
             hidServices.getAttachedHidDevices().stream()
                     .filter(hidDevice -> hidDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, null))
                     .forEach(
-                            hidDevice -> System.out.println("DTS Board Detected - Serial Number '" + hidDevice.getSerialNumber() + "'")
+                            hidDevice -> LOGGER.finer(String.format("DTS Board Detected - Serial Number '%s'", hidDevice.getSerialNumber()))
                     );
         }
         catch (HidException e) {
-            System.out.println("Error getting HidServices.");
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting HidServices.", e);
         }
     }
 
@@ -58,9 +62,7 @@ class DtsBoard implements HidServicesListener {
         if (newS1 != S1 || newS2 != S2) {
             S1 = newS1;
             S2 = newS2;
-
-            System.out.println("Sending Values to DTS("+serialNumber+") Angle:"+angle + " Offset Angel:" + statorAngle +" S1:" + S1 + " S2:" + S2);
-
+            LOGGER.finest(String.format("Sending Values to DTS Board(%s) - Angle: %f3.3, Offset Angle: %f3.3, S1: %d, S2: %d", serialNumber, angle, statorAngle, S1, S2));
             sendValues();
         }
     }
@@ -82,8 +84,7 @@ class DtsBoard implements HidServicesListener {
             }
         }
         catch (HidException e) {
-            System.out.println("Error stopping DtsBoard");
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error stopping DtsBoard", e);
         }
     }
 
@@ -102,9 +103,14 @@ class DtsBoard implements HidServicesListener {
 
     @Override
     public void hidDeviceAttached(HidServicesEvent event) {
+        LOGGER.finest(
+                String.format("HID Detach Event - Vendor Id: %x, Product Id: %x, Serial Number: %s",
+                        event.getHidDevice().getVendorId(),
+                        event.getHidDevice().getProductId(),
+                        event.getHidDevice().getSerialNumber()));
         HidDevice newDevice = event.getHidDevice();
         if (newDevice.isVidPidSerial(VENDOR_ID, PRODUCT_ID, serialNumber)) {
-            System.out.println("DTSBoard(" + serialNumber + ") Attached.");
+            LOGGER.fine(String.format("DTSBoard(%s) Attached.", serialNumber));
             this.device = newDevice;
             sendValues();
         }
@@ -112,9 +118,13 @@ class DtsBoard implements HidServicesListener {
 
     @Override
     public void hidDeviceDetached(HidServicesEvent event) {
-        System.out.println("Detach event - " + event.getHidDevice().getSerialNumber());
+        LOGGER.finest(
+                String.format("HID Detach Event - Vendor Id: %x, Product Id: %x, Serial Number: %s",
+                        event.getHidDevice().getVendorId(),
+                        event.getHidDevice().getProductId(),
+                        event.getHidDevice().getSerialNumber()));
         if (event.getHidDevice().isVidPidSerial(VENDOR_ID, PRODUCT_ID, serialNumber)) {
-            System.out.println("DTSBoard(" + serialNumber + ") Detached.");
+            LOGGER.fine(String.format("DTSBoard(%s) Detached.", serialNumber));
             if (device.isOpen()) {
                 device.close();
             }

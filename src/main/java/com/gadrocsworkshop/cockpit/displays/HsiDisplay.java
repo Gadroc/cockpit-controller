@@ -10,12 +10,16 @@ import javafx.scene.Node;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
+import java.util.logging.Logger;
+
 /**
  * Displays a digital HSI replicating an AQU-6 from an A-10C
  *
  * Created by Craig Courtney on 2/8/15.
  */
 public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, DcsBiosSyncListener {
+
+    private static final Logger LOGGER = Logger.getLogger(HsiDisplay.class.getName());
 
     private int dcsHeading;
     private int dcsCourse;
@@ -52,8 +56,10 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
 
     @Override
     public void onInitialize() {
-        createImageRectangle(this, "/Outer Face.png", 0, 0, 640, 480);
-        headingRotate = createRotatingNeedle(this, "/Compass Card.png", 320, 240, 365, 365);
+        Group root = this.getRootGroup();
+
+        createImageRectangle(root, "/Outer Face.png", 0, 0, 640, 480);
+        headingRotate = createRotatingNeedle(root, "/Compass Card.png", 320, 240, 365, 365);
 
         courseRotate = new Rotate(0, 320, 240);
         Group courseGroup = new Group();
@@ -63,15 +69,15 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
         deviationFlag = createImageRectangle(courseGroup, "/Deviation Flag.png", 320 - (39 / 2), 155, 39, 24);
         courseTranslate = createTranslatingNeedle(courseGroup, "/Deviation Needle.png", 320, 240, 8, 209);
         courseGroup.getTransforms().add(courseRotate);
-        getChildren().add(courseGroup);
+        root.getChildren().add(courseGroup);
 
-        headingBugRotate = createRotatingNeedle(this, "/Heading Bug.png", 320, 240, 33, 16, 0, -190);
-        bearing2Rotate = createRotatingNeedle(this, "/Bearing Needle 2.png", 320, 240, 33, 424, 0, -1);
-        bearing1Rotate = createRotatingNeedle(this, "/Bearing Needle 1.png", 320, 240, 22, 440, 0, 0);
+        headingBugRotate = createRotatingNeedle(root, "/Heading Bug.png", 320, 240, 33, 16, 0, -190);
+        bearing2Rotate = createRotatingNeedle(root, "/Bearing Needle 2.png", 320, 240, 33, 424, 0, -1);
+        bearing1Rotate = createRotatingNeedle(root, "/Bearing Needle 1.png", 320, 240, 22, 440, 0, 0);
 
-        offFlag = createImageRectangle(this, "/Off Flag.png", 640 - 32 - 20, 140, 32, 63);
+        offFlag = createImageRectangle(root, "/Off Flag.png", 640 - 32 - 20, 140, 32, 63);
 
-        createImageRectangle(this, "/Lubber Line.png", 320 - (63 / 2), 2.5, 63, 475);
+        createImageRectangle(root, "/Lubber Line.png", 320 - (63 / 2), 2.5, 63, 475);
 
         DcsBiosParser parser = getDcsBiosParser();
         parser.addDataListener(this);
@@ -139,6 +145,12 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     }
 
     @Override
+    public void onDisplay() {
+        LOGGER.fine("Showing HSI");
+        super.onDisplay();
+    }
+
+    @Override
     public void onUpdateDisplay() {
         if (isDirty()) {
             headingRotate.setAngle(headingAngle);
@@ -157,8 +169,10 @@ public class HsiDisplay extends GaugeDisplay implements DcsBiosDataListener, Dcs
     }
 
     @Override
-    public void controlButtonPressed() {
-        controller.removeActiveDisplay();
+    public void controlButtonReleased() {
+        MainMenuDisplay mainMenu = new MainMenuDisplay();
+        controller.initDisplay(mainMenu);
+        controller.showDisplay(mainMenu);
     }
 
     private boolean getFlagVisible(int dcsValue) {

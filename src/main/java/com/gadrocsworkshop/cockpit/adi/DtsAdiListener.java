@@ -4,12 +4,17 @@ import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
 import org.hid4java.HidException;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * DCSBios Listener to control brydling's DTS Converter (http://forums.eagle.ru/showthread.php?t=112902).
  *
  * Created by Craig Courtney on 6/21/2015.
  */
 public class DtsAdiListener implements DcsBiosDataListener, DcsBiosSyncListener {
+
+    private static final Logger LOGGER = Logger.getLogger(DtsAdiListener.class.getName());
 
     /** Serial number for the Roll DTS Board */
     private static final String ROLL_SERIAL_NUMBER = "A0034";
@@ -29,8 +34,7 @@ public class DtsAdiListener implements DcsBiosDataListener, DcsBiosSyncListener 
             pitchBoard = new DtsBoard(PITCH_SERIAL_NUMBER);
         }
         catch (HidException e) {
-            System.out.println("Error initializing DTSBoard objects.");
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error initializing DTSBoard objects.", e);
         }
     }
 
@@ -44,13 +48,13 @@ public class DtsAdiListener implements DcsBiosDataListener, DcsBiosSyncListener 
         if (address == 0x1032) {
             if (pitchValue != newValue) {
                 pitchValue = newValue;
-                System.out.println("New Pitch Value: " + pitchValue);
+                LOGGER.finest(String.format("New Pitch Value: %d", pitchValue));
             }
         }
         else if (address == 0x1034) {
             if (rollValue != newValue) {
                 rollValue = newValue;
-                System.out.println("New Roll Value: " + rollValue);
+                LOGGER.finest(String.format("New Roll Value: %d", rollValue));
             }
         }
     }

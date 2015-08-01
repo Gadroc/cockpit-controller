@@ -1,6 +1,7 @@
 package com.gadrocsworkshop.cockpit;
 
 import javafx.scene.Group;
+import javafx.scene.Parent;
 import javafx.scene.image.Image;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
@@ -17,6 +18,22 @@ public abstract class GaugeDisplay extends Display {
 
     /** Flag indicating whether this gauge needs to update it's display properties. */
     private boolean dirty;
+
+    private Group rootGroup = new Group();
+
+    @Override
+    public Parent getParentNode() {
+        return rootGroup;
+    }
+
+    /**
+     * Returns the root group for this gauge.
+     *
+     * @return Group element which is used as root to add elements to this gauge.
+     */
+    protected Group getRootGroup() {
+        return rootGroup;
+    }
 
     /**
      * Creates an image based on a rectangle where the image will be rendered.

@@ -1,10 +1,10 @@
 import groovy.xml.NamespaceBuilder
 
 assert project.plugins.findPlugin(JavaPlugin):
-        "The Java plugin must be applied before using javafx7.gradle."
+        "The Java plugin must be applied before using javafx8.gradle."
 
 assert project.plugins.findPlugin(ApplicationPlugin):
-        "The Application plugin must be applied before using javafx7.gradle."
+        "The Application plugin must be applied before using javafx8.gradle."
 
 def javaHome = System.properties['java.home']
 def libTempDir = "${buildDir}/deployfxlibs"

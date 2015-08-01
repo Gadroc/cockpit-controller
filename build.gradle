@@ -7,6 +7,11 @@ buildscript {
     }
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.5'
+}
+
+apply plugin: 'idea'
 apply plugin: 'java'
 apply plugin: 'application'
 apply from: "${rootProject.projectDir}/gradle/javafx8.gradle"
@@ -16,9 +21,16 @@ mainClassName = "com.gadrocsworkshop.cockpit.CockpitController"
 sourceCompatibility = 1.8
 version = '1.0.1'
 
+idea {
+    project {
+        jdkName = '1.8'
+        languageLevel = '1.8'
+    }
+}
+
 remotes {
     testCockpit {
-        host = 'testcockpit.local'
+        host = '192.168.0.122'
         user = 'pi'
         knownHosts = allowAnyHosts
         identity = file('testcockpit.ppk')
@@ -60,9 +72,11 @@ dependencies {
 task deployTest(dependsOn: distZip) << {
     ssh.run {
         session(remotes.testCockpit) {
+            execute "sudo /etc/init.d/cockpit stop"
             execute "rm -rf ${project.name}-${version}", ignoreError: true
             put "build/distributions/${project.name}-${version}.zip", "${project.name}-${version}.zip"
             execute "unzip ${project.name}-${version}"
+            execute "sudo /etc/init.d/cockpit start"
         }
     }
 }
@@ -70,9 +84,11 @@ task deployTest(dependsOn: distZip) << {
 task deploy(dependsOn: distZip) << {
     ssh.run {
         session(remotes.cockpit) {
+            execute "sudo /etc/init.d/cockpit stop"
             execute "rm -rf ${project.name}-${version}", ignoreError: true
             put "build/distributions/${project.name}-${version}.zip", "${project.name}-${version}.zip"
             execute "unzip ${project.name}-${version}"
+            execute "sudo /etc/init.d/cockpit start"
         }
     }
 }
