@@ -1,6 +1,7 @@
 package com.gadrocsworkshop.cockpit;
 
-import com.gadrocsworkshop.cockpit.adi.DtsAdiListener;
+import com.gadrocsworkshop.cockpit.buses.CenterConsoleBus;
+import com.gadrocsworkshop.cockpit.dts.DtsAdiListener;
 import com.gadrocsworkshop.cockpit.displays.HsiDisplay;
 import com.gadrocsworkshop.dcsbios.DcsBiosParser;
 import com.pi4j.io.gpio.*;
@@ -41,6 +42,8 @@ public class CockpitController extends Application implements RotaryEncoderListe
     private HsiDisplay hsiDisplay;
     private final Stack<Display> displayStack;
 
+    private CenterConsoleBus centerConsoleBus;
+
     private GpioController gpio;
     private GpioPinDigitalOutput powerOutput;
 
@@ -79,6 +82,7 @@ public class CockpitController extends Application implements RotaryEncoderListe
         startAnimationTimer();
         startGpio();
         startAdi();
+        startConsoles();
         LOGGER.info("Initialization Complete");
     }
 
@@ -262,6 +266,11 @@ public class CockpitController extends Application implements RotaryEncoderListe
             }
         };
         timer.start();
+    }
+
+    private void startConsoles() {
+        LOGGER.fine("Starting Console Buses");
+        centerConsoleBus = new CenterConsoleBus(getDcsBiosParser());
     }
 
     @Override

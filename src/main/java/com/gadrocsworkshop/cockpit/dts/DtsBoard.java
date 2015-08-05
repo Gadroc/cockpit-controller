@@ -1,4 +1,4 @@
-package com.gadrocsworkshop.cockpit.adi;
+package com.gadrocsworkshop.cockpit.dts;
 
 import org.hid4java.*;
 import org.hid4java.event.HidServicesEvent;

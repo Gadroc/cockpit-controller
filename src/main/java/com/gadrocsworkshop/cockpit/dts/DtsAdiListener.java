@@ -1,4 +1,4 @@
-package com.gadrocsworkshop.cockpit.adi;
+package com.gadrocsworkshop.cockpit.dts;
 
 import com.gadrocsworkshop.dcsbios.DcsBiosDataListener;
 import com.gadrocsworkshop.dcsbios.DcsBiosSyncListener;
